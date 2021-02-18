@@ -18,7 +18,7 @@
 - Assignees는 현재 리딩하는 사람을 지정한다.
 - Project는 이펙티브 자바를 지정한다.
 
-
+![1](./images/1.png)
 
 
 
