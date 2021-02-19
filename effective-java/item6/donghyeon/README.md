@@ -1,0 +1,117 @@
+---
+layout: post
+title: 불필요한 객체 생성은 피하자
+categories: [이펙티브자바]
+comments: true 
+tags:
+- 이펙티브자바
+---
+
+
+
+똑같은 기능의 객체를 매번 생성하기 보다는 객체 하나를 재사용하는 편이 당연히 좋다. 특히 불변 객체로 만들어진 객체라면 언제든지 재사용 할 수 있다.
+
+불변 객체는 대표적으로 우리가 자주쓰는 String 객체가 있다.
+
+**3개의 String을 만드는 코드가 있다.**
+
+```java
+String newString = new String("new String"); // 1
+
+String justString = "just String"; // 2
+String anotherJustString = "just String";; //3
+```
+
+위에 예제에서 몇 개의 String 객체가 만들어 질까? 
+
+정답은 총 2개의 String 객체가 만들어진다. newString에 의해 생긴 String은 바로 Heap 메모리에 올라가고, justString과 anotherJustString은 Heap 메모리에 있는 **String Constant Pool**이 관리하기 때문이다.
+
+![](https://cdn.journaldev.com/wp-content/uploads/2012/11/String-Pool-Java1-450x249.png)
+
+그 결과로 anotherJustString 객체를 만들 때, String Pool에서 "just String"이라는 **객체가 이미 있는지 확인해서, 있으면 그 객체를 재활용 한다.** 
+
+그와 반대로, newString은 Heap에 새로운 객체를 올리기 때문에, 사용 후 바로 가비지 컬렉션의 대상이 된다.
+
+또 다른 예로 Boolean(String) 생성자 대신 Boolean.valueOf(String) 팩터리 메서드를 사용하는 것이 좋다. 이 팩터리 메서드를 사용하게 되면, Boolean 클래스가 미리 만들어논 객체를 리턴하기 때문에, 객체를 추가적으로 만들지 않아도 된다.
+
+**Boolean.java**
+
+```java
+public final class Boolean implements java.io.Serializable,
+                                      Comparable<Boolean>
+{
+		// 정적 변수로 미리 초기화를 해놓는다.
+    public static final Boolean TRUE = new Boolean(true);
+    public static final Boolean FALSE = new Boolean(false);
+                                        
+    public static Boolean valueOf(String s) {
+        return parseBoolean(s) ? TRUE : FALSE; //이미 만들어져 있는 객체를 리턴한다.
+    }                                    
+ }
+```
+
+
+
+또한 정규식을 검사할 때 사용하는 String.matches() 메소드를 예를 들어보자.
+
+다음은 주어진 문자열이 유효한 로마 숫자인지를 확인하는 메서드이다.
+
+**String.matches()**
+
+```java
+static boolean isRemanNumeral(String s) {
+  return s.matches("^(?=.)M*(C[MD]D?C{0,3})" 
+                  + "(X[CL]|L?X{0,3})(I[XV|V?I{0,3}])$")
+}
+```
+
+s.matches()가 실행될 때, 내부적으로 Pattern 클래스를 만들며, 만들어진 이 Pattern 클래스는 한 번만 쓰고 가비지컬렉션의 대상이 된다.
+
+Pattern 객체의 생성 비용은, 입력받은 정규표현식에 해당하는 [유한 상태 머신(finite state machine)](https://www.youtube.com/watch?v=ZfW7FwuBd90&ab_channel=ValhallaDataSystems)을 만들기 때문에 생성 비용이 높은 편이다.
+
+![직렬화 다이어그램](/images/패턴의문제점.png)
+
+이를 해결하기 위해서 원하는 정규식을 가진 Pattern 클래스를 만들어서 캐싱해서 객체를 계속 재활용 하는 방법이 있다.
+
+**Pattern 객체를 재활용해서 성능 개선**
+
+```java
+public class RomanNumerals {
+  private static final Pattern ROMAN = Pattern.compile(
+    						"^(?=.)M*(C[MD]D?C{0,3})" 
+                  + "(X[CL]|L?X{0,3})(I[XV|V?I{0,3}])$");
+  static boolean isRomanNumerla(String s) {
+    return ROMAN.matcher(s).matches();
+  }
+}
+```
+
+이렇게 해서 성능이 1.1 -> 0.17로 6.5배정도 성능향상이 있었다.
+
+또한 정규식에 이름을 지어줌으로써 더 명확한 코드가 되었다.
+
+또 다른 예로, 오토박싱을 들 수 있다.
+
+**오토박싱에 의해 불필요한 객체 생성**
+
+```java
+private static long sum() {
+  Long sum = 0L;
+  for (long i = 0; i <= Integer.MAX_VALUE; i++) 
+    sum += i;
+  
+  return sum;
+}
+```
+
+위에 예제는 Long 타입의 sum에 long 타입인 i가 더해질 때마다 불필요한 Long이 생성된다.
+
+**박싱된 기본 타입보다는 기본타입을 사용하고, 의도치 않은 오토박싱이 숨어들지 않도록 주의하자.**
+
+
+
+그리고 **아주 무거운 객체가 아니라면 객체 생성을 피하고자 커스텀하게 객체 풀(pool)을 만들지는 말자.** 물론 데이터베이스 연결 같은 경우 생성 비용이 워낙 비싸니까 재활용하는 편이 낫지만, 일반적으로 자체 객체 풀은 코드를 헷갈리게 만들고 메모리 사용량을 늘리고 성능을 떨어뜨린다. 요즘 JVM의 가비지 컬렉터는 상당히 잘 최적화되어서 가벼운 객체용을 다룰 때는 직접 만든 객체 풀보다 훨씬 빠르다.
+
+## 참고자료
+
+https://stackoverrun.com/ko/q/339287

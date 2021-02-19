@@ -1,0 +1,195 @@
+---
+layout: post
+title: 생성자에 매개변수가 많다면 빌더패턴을 사용하기
+categories: [Java]
+comments: true 
+tags:
+- 이펙티브자바
+---
+
+
+자바에서 객체를 생성할 때, **정적 팩터리**로 객체를 만드는 방법과, **생성자**로 객체를 만드는 방법에는 똑같은 제약이 있습니다. 만약 **<u>선택적 매개변수</u>**가 많을 때 적절히 대응하기 어렵다는 점 입니다.
+
+## 🤔 점층적 생성자 패턴
+
+**점층적 생성자 패턴**
+
+```java
+public class NutritionFacts {
+	private final int servingSize;// 필수
+  private final int servings;// 필수
+  
+  private final int caloreis;// 선택
+  private final int fat;// 선택
+  private final int carbohydrate;// 선택
+  
+  public NutritionFacts(int servingSize, int servings) {
+    this(servingSize, servings, 0);
+  }
+  public NutritionFacts(int servingSize, int servings, int calories) {
+    this(servingSize, servings, caloreis, 0);
+  }
+  public NutritionFacts(int servingSize, int servings, int calories ,int fat) {
+    this(servingSize, servings, calories, fat, 0);
+  }
+  public NutritionFacts(int servingSize, int servings, int calories ,int fat ,int carbohydrate) {
+    this.servingSzie = servingSize;
+    this.servings = servings; 
+    this.calories = calories;
+    this.fat = fat;
+		this.carbohydrate = carbohydrate;
+  }
+ }
+```
+
+NutritionFacts의 클래스를 생성할 때 **필수 값**은 <u>servingSize</u>와 <u>servings</u> 입니다. 나머지 필드는 **선택적 필드**이며, 객체를 만들 때 원하는 매개변수를 모두포함한 생성자 중 **가장 짧은 것**을 골라 호출하면 됩니다.
+
+```java
+NutritionFacts cocaCola = new NutritionFacts(240, 8, 100, 0, 27);
+```
+
+그렇지만, 사용자가 설정하길 원치 않은 매개변수에도 값을 지정해줘야 합니다.(ex: 위에 코드에서 fat을 0으로 설정함).
+또한 매개변수가 더 늘어나면 금세 걷잡을 수 없게 됩니다.
+
+### 문제점 
+
+- 선택 매개변수가 많아지면 생성자도 늘어나게 된다.
+
+## 🧐 자바빈즈 패턴(JavaBeans Pattern)
+
+**자바빈즈 패턴(JavaBeans Pattern)**
+
+```java
+public class NutritionFacts {
+	private int servingSize = -1;
+  private int servings = -1;
+  
+  private int caloreis = 0;
+  private int fat = 0;
+  private int carbohydrate = 0;
+    
+  public NutritionFacts() {}
+  //세터 메서드들
+  ...setter
+}
+```
+
+점증척 생성자 패턴의 단점들이 자바빈즈 패턴에서는 보이지 않습니다.
+
+객체를 생성할 때 다음과 같이 생성합니다.
+
+```java
+NutritionFacts cocaCola = new NutritionFacts();
+cocaCola.setServingSize(240);
+cocaCola.setServings(8);
+cocaCola.setCaloreis(100);
+...
+```
+
+그치만 자바빈즈도 심각한 단점을 갖고 있는데, **<u>객체 하나를 만들려면 여러 개의 호출을 해야 하기 때문에, 객체가 완전히 생성되기 전까지는 일관성이 무너진 상태가 됩니다.</u>**
+
+### 😭 일관성이 무너진다는 말이 무슨말일까?
+
+일관성이 무너진다는 말은 만약 아래와 같이 객체를 세팅했다고 가정해봅시다.
+
+```java
+NutritionFacts cocaColoa = new NutritionFacts();
+cocaCola.setServingSize(240);
+cocaCola.setCaloreis(100):
+```
+
+이렇게 셋팅을 하면 필수 매개변수였던 **<u>servings 필드</u>**는 세팅이 되지 않아 그 결과 객체가 유효하지 않은 상태가 됩니다.
+
+만약 유효한 객체가 들어올 것이라고 예상한 `healthRiskCalculator.calculateHealthRisk(NutritionFacts facts)` 메소드를 호출하게 되면 **<u>예외</u>**가 발생하게 됩니다. **이런 경우를 일관성이 깨진다고 합니다.**
+
+ 일관성이 깨지면, 클래스를 불변으로 만들 수 없기 때문에, 스레드 안전성을 얻지도 못하므로, 스레드 안전성을 얻기 위해서는 프로그래머가 동기화 작업같은 추가작업을 해줘야만 합니다.
+
+## 😋 해결 - 빌더 패턴
+
+**빌더패턴**
+
+```java
+public class NutritionFacts {
+	private final int servingSize;  
+  private final int servings;			
+  
+  private final int caloreis; 	
+  private final int fat;				
+  private final int carbohydrate;
+  
+  public static class Builder {
+    // 필수 매개 변수
+    private final int servingSize;
+    private final int servings;
+    
+    //선택 매개 변수 - 기본 값으로 초기화 한다.
+    private int calories = 0;
+    private int fat = 0;
+    private int carbohydrate = 0;
+    
+    public Builder(int servingSize, int servings) {
+      this.servingSize = servingSize;
+      this.servings = servings;
+    }
+    
+    public Builder caloreis(int val) {
+      calores = val; return this;
+    }
+    
+    public Builder fat(int val) {
+      fat = val; return this;
+    }
+    
+    public Builder carbohydrate(int val) {
+      carbohydrate = val; return this;
+    }
+    
+    public NutritionFacts buld() {
+      return new NutritionFacts(this):
+    }
+  }
+  
+  private NutritionFacts(Builder builder){
+    servingSize =	builder.servingSize;
+    servings = builder.servings;
+    calories =	builder.calories;
+    fat =	builder.fat;
+    carbohydrate =	builder.carbohydrate;
+  }
+}
+```
+
+NutritionFacts 클래스는 불변이며, 모든 매개변수의 기본값들을 한곳에 모아두었습니다. 빌더의 세터 메서드들은 빌더인 자기자신을 반환하기 때문에 연쇄적으로 호출 할 수 있습니다.
+
+```java
+NutritionFacts cocaCola = new NutritionFacts.Builder(240,8)
+  .calories(100).carbohydrate(10).build();
+```
+
+위에 코드는 쓰기 쉽고 무엇보다 가독성이 높으며, 빌더를 이용하면 가변인수 매개변수를 여러 개 사용할 수 있습니다. 
+
+
+## 정리
+
+### **장점**
+
+- 빌더 패턴은 점층적 생성자 패턴보다는 코드가 장황해서 매개 변수가 4개 이상은 되어야 값어치 한다.
+  - 하지만 API는 시간이 지날수록 매개변수가 많아지는 경향이 있어서 처음부터 빌더패턴을 적용하는 것도 좋다.
+- 빌더 패턴은 상당히 유연하기 때문에 선택적 매개변수를 이용해 객체를 생성할 때 유용하다.
+- 생성자나 정적 팩터리가 처리해야 할 매개변수가 많다면 빌더 패턴을 선택하는게 더 낫다.
+- Lombok의 @Builder 어노테이션을 이용하면, Builder 클래스를 개발자가 만들어주지 않아도 된다.
+
+## 참고자료
+
+```
+Pizza pizza = new Pizza(12);
+pizza.setCheese(true);
+pizza.setPepperoni(true);
+pizza.setBacon(true);
+```
+
+**위에 코드는 스레드 세이프할까? 가 궁금했는데, 아래에서 답변을 찾았습니다.**
+https://stackoverflow.com/questions/44345780/whyjava-bean-pattern-is-not-threadsafe
+
+**자바빈즈 패턴을 사용할 때, 일관성이 무너진다는 말이 정확히 무슨뜻인지 살펴보았습니다.**
+https://stackoverflow.com/questions/23169795/javabean-disadvantage-inconsistent-during-construction

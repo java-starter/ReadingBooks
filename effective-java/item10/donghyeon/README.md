@@ -1,0 +1,361 @@
+---
+layout: post
+title: equals를 재정의 하는 방법
+categories: [이펙티브자바]
+comments: true 
+tags:
+- 이펙티브자바
+---
+
+Object 클래스 안에 equals() 메서드가 있다. 
+
+equals() 메서드에 대해서 알아보자.
+
+## equals() 메서드를 재정의 하지 않아도 되는 경우
+
+- **각 인스턴스가 본질적으로 고유하다.** 값을 표현하는 게 아니라 동작하는 개체를 표현하는 클래스가 여기 해당한다. Thread가 좋은 예로, Object의 equals 메서드는 이러한 클래스에 딱 맞게 구현 되었다. 즉 스레드는 유일하다는 뜻이다.
+- **인스턴스의 논리적 동치성(logical equality)을 검사할 일이 없다.** 인스턴스들 끼리 equals() 메서드를 사용해서, 논리적으로 같은지 검사할 필요가 없다는 뜻이다. 이럴 경우 Object의 기본 equals 로만으로도 해결된다.
+- **상위 클래스에서 재정의한 equals가 하위 클래스에도 딱 들어 맞는다.** 대부분의 Set 구현체는 AbstractSet이 구현한 equals를 상속받아 쓰고, List 구현체들은 AbstractList로부터, Map 구현체들은 AbstractMap으로부터 상속받아 그대로 쓴다.
+- **클래스가 private이거나 package-private이고 equals 메서드를 호출할 일이 없으면**, 재정의하지 않아도 된다.
+
+
+
+> 책의 내용에서는 클래스가 private이거나 package-private이고 equals 메서드를 호출할 일이 없으면, 재정의하지 않아도 된다고 나와있다.
+>
+> 그러나 클래스의 접근자는 default 이거나, public 둘 중 하나 밖에 사용을 못한다. 이 말이 대체 무슨 뜻 일까? 
+>
+> 곰곰히 생각해 보았더니, 이너클래스(inner-class) 또는 중첩클래스(nested-class) 를 말하는 것이였다.
+>
+> ```java
+> public class A {
+> 
+>     public class B {}
+> 
+>     private class C {}
+>     
+>     private static class D {}
+>     
+>     protected static class E {}
+> }
+> ```
+>
+> 
+
+## equals() 메서드를 재정의 해야 하는 경우
+
+equals 메서드를 재정의 해야 하는 경우는, 두 객체가 물리적으로 같은지?(즉 같은 메모리주소를 참조하고 있는지) 가 아니라, 논리적 동치성을 확인해야 하는데, 상위 클래스의 equals가 논리적 동치성을 비교하도록 재정의되지 않았을 때다.
+
+예를 들어 자바를 처음 접했을 때, 다음과 같은 실수를 한번 씩 접해봤을 것이다.
+
+```java
+String str1 = new String("abc");
+String str2 = new String("abc");
+
+System.out.println(str1 == str2) // false
+```
+
+변수 str1과 str2은 논리적으로는 서로 같은 String을 담고 있지만, == 비교를 하게 되면 **메모리 주소값**을 비교하기 때문에 false가 나오게 된다.
+
+이럴 때 논리적 동치성 비교를 해야 하는데, 이럴 때 사용하는 것이 equals() 메서드이다.
+
+```java
+String str1 = new String("abc");
+String str2 = new String("abc");
+
+System.out.println(str1.equals(str2)) // true
+```
+
+또다른 예로, equals()가 논리적 동치성을 확인하도록 재정의해두면,Map의 키와 Set의 원소를 사용할 수 있게 된다. 
+
+만약 값 클래스라 해도, 값이 **같은 인스턴스가 둘 이상 만들어지지 않음을 보장**하면 equals()를 재정의 하지 않아도 된다. Enum도 여기에 해당 된다.
+
+같은 값 클래스라면, 내부적으로 동일한 객체를 반환 해주니, **논리적 동치성(equals)이 즉 객체 식별성(==)과 똑같은 의미가 된다.**
+
+그렇다면, 재정의는 어떻게 해야 할까?
+
+## equals() 재정의 하는 방법
+
+equals를 재정의 할 때 다음과 같은 규약을 반드시 따라야 한다. 다음은 Object 명세에 적힌 규약이다.
+
+- **반사성(reflexivity)** : null이 아닌 모든 참조 값 x에 대해, **x.equals(x)는 true**다.
+- **대칭성(symmetry)** : null이 아닌 모든 참조 값 x,y에 대해 **x.equals(y)가 true면 y.equals(x)도 true**다.
+- **추이성(transitivity)** : null이 아닌 모든 참조 값 x,y,z에 대해, **x.equals(y)가 true이고, y.equals(z)도 true면, x.equals(z)도 true**다.
+- **일관성(consistency)** : null이 아닌 모든 참조 값 x,y에 대해 **x.equals(y)를 반복해서 호출하면 항상 true를 반환하거나 항상 false를 반환**한다.
+- **null-아님** : null이 아닌 모든 참조 값 x에 대해 x.equals(null)은 false다.
+
+
+
+### <u>대칭성</u>을 위반하는 코드
+
+```java
+public final class CaseInsensitiveString {
+  private final String s;
+  
+  public CaseInsensitiveString(String s) {
+    this.s = Objects.requireNonNull(s);
+  }
+  
+  //대칭성 위배
+  @Override
+  public boolean equals(Object o) {
+    if(o instanceof CaseInsensitiveString)
+      return s.equalsIgnoreCase(
+    ((CaseInsensitiveString) o).s);
+    
+    if(o instanceof String) // 한 방향으로만 작동한다.
+      return s.equalsIgnoreCase((String)o);
+    return false;
+  }
+}
+```
+
+위에 있는 CaseInsensitiveString 클래스는 **대소문자를 구별하지 않는** 문자열을 담는 클래스이다.
+
+재정의한 equals() 메서드를 String 하고 비교를 해보자.
+
+```java
+CaseInsensitiveString cis = new CaseInsensitiveString("Polish");
+String s = "polish"; 
+
+cis.equals(s); // true
+s.equals(cis); // false
+```
+
+cis.equals(s)는 true로 반환하며, s.equals(cis)는 false를 반환하므로, 대칭성을 위반하게 된다.
+
+**다음의 contains() 함수는 무엇을 반환할까?**
+
+```java
+CaseInsensitiveString cis = new CaseInsensitiveString("Polish");
+String s = "polish"; 
+
+List<CaseInsensitiveString> list = new ArrayList<>();
+list.add(cis);
+
+list.contains(s);//true? false?
+```
+
+contains() 함수는 내부적으로 equals()를 사용하기 때문에 false가 나오게 된다.
+
+이 문제를 해결하려면 CaseInsensitiveString의 equals를 String과 연동하겠다는 꿈을 버려야 한다.
+
+**equals() 를 잘 구현한 모습**
+
+```java
+@Override
+public boolean equals(Object o) {
+	return o instanceof CaseInSensitiveString &&
+    ((CaseInsensitiveString) o).s.equalsIgnoreCase(s);
+}
+```
+
+
+
+### <u>추이성</u>을 위반하는 코드
+
+다음은 2차원에서 점을 표현하는 클래스다.
+
+**Point.class**
+
+```java
+public class Point {
+    protected final int x;
+    protected final int y;
+
+    public Point(int x, int y) {
+        this.x = x;
+        this.y = y;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (!(o instanceof Point))
+            return false;
+        Point p = (Point) o;
+        return p.x == x && p.y == y;
+    }
+}
+```
+
+그런데 여기서 Point를 상속해서 새로운 클래스인 ColorPoint를 만들어 보자.
+
+**ColorPoint.class**
+
+```java
+public class ColorPoint extends Point {
+    private final Color color;
+
+    public ColorPoint(int x, int y, Color color) {
+        super(x, y);
+        this.color = color;
+    }
+}
+```
+
+그럼 ColorPoint 클래스의 equlas() 메서드는 어떻게 해야 할까? 기존에 Point에서 사용하던 equals() 메서드를 사용하게 되면 Color 객체는 상관없이 비교를 수행 한다.
+
+그럼 Color 객체도 비교 대상에 포함되도록 eauls() 메서드를 구현 해 보자
+
+```java
+    @Override
+    public boolean equals(Object o) {
+        if(!(o instanceof ColorPoint))
+            return false;
+        return super.equals(o) && ((ColorPoint)o).color == color;
+    }
+```
+
+이렇게 작성하면 **대칭성**을 위반한다.
+
+```java
+Point p = new Point(1,2);
+ColorPoint cp = new ColorPoint(1,2,Color.RED);
+
+p.eqauls(cp); // true
+cp.eqauls(p); // false
+```
+
+그럼 Point 객체가 들어오면 내부 color를 비교하지 말고, x 와 y 만 비교해보자.
+
+```java
+    @Override
+    public boolean equals(Object o) {
+        if(!(o instanceof Point))
+            return false;
+        //o 가 일반 Point면 색상을 무시하고 비교함.
+        if(!(o instanceof ColorPoint))
+            return o.equals(this);
+        // o 가 ColorPoint면 색상까지 비교한다.
+        return super.equals(o) && ((ColorPoint)o).color == color;
+    }
+```
+
+그러나 이 코드는 **추이성**을 위반 한다.
+
+```java
+ColorPoint p1 = new ColorPoint(1,2,Color.RED);
+Point p2 = new Point(1,2);
+ColorPoint p3 = new ColorPoint(1,2,Color.BLUE);
+
+p1.eqauls(p2); // true
+p2.eqauls(p3); // true
+p1.eqauls(p3); // false 
+```
+
+그럼 도대체 어떻게 구현 해아 할까?
+
+## equals() 제대로 구현 하기
+
+equals() 메서드를 제대로 구현하려면 상속 대신 컴포지션 패턴을 이용하는 방법이 있다.
+
+```java
+public class ColorPoint {
+    private final Point point;
+    private final Color color;
+
+    public ColorPoint(Point point, Color color) {
+        this.point = point;
+        this.color = Objects.requireNonNull(color);
+    }
+
+    public Point asPoint() {
+        return point;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if(!(o instanceof ColorPoint))
+            return false;
+        ColorPoint cp = (ColorPoint) o;
+        return cp.point.equals(point) && cp.color.equals(color);
+    }
+}
+```
+
+이렇게 상속 보다 컴포지션을 이용하면 안전하게 equals()를 구현할 수 있다.
+
+**일관성**은 두 객체가 같다면 앞으로도 영원히 같아야 한다는 뜻이다. 가변 객체라면 비교 시점에 따라 서도 다를 순 있지만, 불변 객체라면 한번 다르면 끝까지 달라야 한다. 클래스를 불변 클래스로 만드는게 나을지를 생각해보자. 불변 클래스로 만들기로 했다면 equals가 한번 같다고 한 객체와는 영원히 같다고 답해야 한다.
+
+클래스가 불변이든 가변이든 **equals()의 판단에 신뢰할 수 없는 자원이 끼어들게 해서는 안된다.** 이 제약을 어기면 일관성 조건을 만족시키기가 아주 어렵다.
+
+그 다음 마지막 조건이였던 **null-아님** 은 모든 객체가 null과 같지 않아야 한다는 뜻이다. 만약 equals() 비교 할때 null 객체가 들어 오게되면 실수로 **NullPointerException**을 던지게 될 수도 있다.
+
+그래서 명시적으로 null 검사를 하기도 한다.
+
+**명시적 null 검사**
+
+```java
+//명시적 null 검사
+@Override public boolean equals(Object o) {
+  if(o == null)
+    return false;
+}
+```
+
+그러나 이 방법 보다는 형변환에 앞서 instanceof 연산자를 이용해서 묵시적으로 null 감사하는 편이 좋다.
+
+**묵시적 null 검사**
+
+```java
+//묵시적 null 검사
+@Override public boolean equals(Object o) {
+  if(!(o instanceof MyType))
+    return false;
+	MyType mt = (MyType) o;
+  ...
+}
+```
+
+
+
+### equals 메서드 구현 단계
+
+1. **== 연산자를 사용해 입력이 자기 자신의 참조인지 확인한다.** 자기 자신이면 true를 반환한다. 이는 단순히 성능 최적화용으로, 비교 작업이 복잡한 상황일 때 값어치를 할 것이다.
+
+2. **instanceof 연산자로 입력이 올바른 타입인지 확인한다.** 그렇지 않다면 false를 반환한다. 이때의 올바른 타입은 equals가 정의된 클래스인 것이 보통이지만, 가끔은 그 클래스가 구현한 특정 인터페이스가 될 수도 있다. 어떤 인터페이스는 자신을 구현한 (서로 다른) 클래스끼리도 비교할 수 있도록 equals 규약을 수정하기도 한다. 이런 인터페이스를 구현한 클래스라면 equals에서 (클래스가 아닌) 해당 인터페이스를 사용해야 한다. Set, List, Map, Map.Entry 등의 컬렉션 인터페이스들이 여기 해당한다.
+
+   예를 들어, Stack과 LinkedList를 서로 equals() 비교를 할 때, 이 둘은 List의 구현체이므로,  AbstracList에 정의된 equals()를 사용한다.
+
+3. **입력을 올바른 타입으로 형변환한다.** 앞서 2번에서 instanceof 검사를 했기 때문에 이 단계는 100% 성공한다.
+
+4. **입력 객체와 자기 자신의 대응되는 핵심 필드들이 모두 일치하는지 하나씩 검사한다.** 모든 필드가 일치하면 true를, 다르면 false를 반환한다. 2단계에서 인터페이스를 사용했다면 입력의 필드 값을 가져올 때도 그 인터페이스의 메서드를 사용해야 한다. 타입이 클래스라면(접근 권한에 따라) 해당 필드에 직접 접근할 수도 있다.
+
+5. **equals를 재정의할 땐 hashCode도 반드시 재정의하자.**(다음 장)
+
+6. **너무 복잡하게 해결하려 들지 말자.** 필드들의 동치성만 검사해도 equals 규약을 어렵지 않게 지킬 수 있다. 오히려 너무 공격적으로 파고들다가 문제를 일으키기도 한다. 일반적으로 별칭(alias)은 비교하지 않는 게 좋다. 예컨대 File 클래스라면, 심볼릭 링크를 비교해 같은 파일을 가리키는지를 확인하려 들면 안 된다.
+
+7. Object 외의 타입을 매개변수로 받는 equals 메서드를 선언하지 말자.
+
+   ```java
+   public boolean equals(MyClass o) {
+   }
+   ```
+
+   이 방법은 오버라이딩이 아니라 오버로딩이다.
+
+## equals 자동 생성
+
+요즘 IDE나 라이브러리들은 equals를 자동 생성 해준다.
+
+내가 사용하고 있는 대표적인 자동 생성 두가지 방법은 다음과 같다.
+
+### Intellij의 자동생성
+
+![](/images/item10/intellij1.png)
+
+다음과 같이 intellij의 generator의 도움을 받아 자동생성을 해줄 수 있다 
+
+![](/images/item10/intellij2.png)
+
+
+
+### Lombok의 @EqualsAndHashCode 이용
+
+Lombok의 @EqualsAndHashCode 어노테이션을 이용하면 자동으로 만들어 준다.
+
+![](/images/item10/lombok1.png)
+
+컴파일 된 결과는 다음과 같다.
+
+![](/images/item10/lombok2.png)
+

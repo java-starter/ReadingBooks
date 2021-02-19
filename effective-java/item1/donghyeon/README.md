@@ -1,0 +1,187 @@
+---
+layout: post
+title: 생성자 대신 정적 팩터리 메서드
+categories: [Java]
+comments: true 
+tags:
+- 이펙티브자바
+---
+
+
+클래스를 통해 객체를 만드는 **일반적인 방법은 public으로 선언된 생성자**를 이용하는 것입니다.  그러나 생성자를 통해서 객체를 만드는 방법 이외에도 public으로 선언된 **정적 팩토리 메서드**를 사용할 수 있습니다.
+
+**Boolean 클래스의 정적 팩터리 메서드**
+
+```java
+public static Boolean valueOf(boolean b) {
+  return (b ? TRUE : FALSE);
+}
+```
+
+정적 팩토리 메서드를 사용할 때 장점은 다음과 같습니다.
+
+- 생성자와 달리 정적 팩터리 메서드에는 **이름**이 있다.
+- 생성자와 달리 싱글턴패턴 처럼 호출 할 때마다 **새로운 객체**를 생성할 필요가 없다.
+- **하위 자료형 객체**를 반환할 수 있다.
+- **정적 팩터리 메서드를 작성하는 시점**에는 반환할 객체의 클래스가 존재하지 않아도 된다.
+
+
+
+## 1. 생성자와 달리 정적 팩터리 메서드에는 이름이 있다.
+
+생성자에 전달되는 파라미터들은 어떤 객체가 생성되는지를 설명하지 못하지만, 정적 팩터리 메서드는 이름을 잘 짓기만 한다면 사용하기 쉽고, 가독성도 높아집니다.
+
+```java
+public static Integer valueOf(String s) throws NumberFormatException {
+  return Integer.valueOf(parseInt(s, 10));
+}
+```
+
+
+
+## 2. 생성자와 달리 싱글턴 패턴 처럼 호출 할 때마다 새로운 객체를 생성할 필요가 없다.
+
+**싱글턴 패턴 예제**
+
+```java
+public class EagerInitializationSingleton {
+
+    private static final EagerInitializationSingleton instance = new EagerInitializationSingleton();
+
+    private EagerInitializationSingleton() {
+    }
+
+    public static EagerInitializationSingleton getInstance() {
+        return instance;
+    }
+}
+```
+
+매번 새로운 객체를 리턴하기 보다는, **이미 만들어져있는 객체**를 리턴해줄 수 있습니다. 이 기법은 [Flyweight 패턴](https://donghyeon.dev//articles/2020-04/%ED%94%8C%EB%9D%BC%EC%9D%B4%EC%9B%A8%EC%9D%B4%ED%8A%B8-%ED%8C%A8%ED%84%B4)과 유사합니다. 동일한 객체가 요청되는 일이 잦고, 특히 객체를 만드는 비용이 클 때 적용하면 성능을 크게 개선할 수 있습니다.
+
+이렇게 정적 팩터리 메서드를 사용하면 같은 객체를 반복해서 반환할 수 있으므로 어떤 시점에 어떤 객체가 얼마나 존재할지를 정밀하게 제어할 수 있는데, 그런 기능을 갖춘 클래스는 **개체 통재 클래스**라고 부릅니다. 개체 통제 클레스를 작성하는 이유는 몇 가지가 있습니다. 개체 수를 제어하면 싱글턴 패턴을 따르게 할 수 있고, **객체 생성이 불가능한 클래스**를 만들 수도 있습니다. 변경이 불가능한 클래스의 경우 두 개의 같은 객체가 존재하지 못하도록 할 수도 있습니다. 즉 a == b일 때만 a.equals(b)가 참이 되도록 만들 수 있습니다. 이렇게 구현된 클래스는 equlas() 대신 == 연산자로 메모리를 비교하기 때문에 성능이 향상됩니다. enum이 이 기법을 사용합니다.
+
+**<u>그렇지만, 정적 팩터리가 반드시 호출 할 때마다 캐싱되어 있는 객체를 반환해야 하는 것은 아닙니다.</u>**
+
+Boolean 클래스의 경우 JVM 실행시 내부적으로 true 값과 false 값을 캐싱해서, 클라이언트가 호출할 때마다 이 객체를 반환하도록 합니다.
+
+**Boolean.java**
+
+```java
+public final class Boolean implements java.io.Serializable,
+                                      Comparable<Boolean> {
+    public static final Boolean TRUE = new Boolean(true);
+    public static final Boolean FALSE = new Boolean(false);
+                                       
+     public static Boolean valueOf(boolean b) {
+            return (b ? TRUE : FALSE);
+        }
+}
+```
+
+그렇지만 LocalDateTime 클래스의 경우, 캐싱을 사용하지 않고, 매번 호출 시 새로운 객체를 반환하도록 되어 있습니다.
+
+**LocalDateTime.java**
+
+```java
+public static LocalDateTime of(int year, Month month, int dayOfMonth, int hour, int minute) {
+    LocalDate date = LocalDate.of(year, month, dayOfMonth);
+    LocalTime time = LocalTime.of(hour, minute);
+    return new LocalDateTime(date, time);
+}
+```
+
+이렇게  JDK 예제에서 보았듯이, 정적 팩터리 메소드를 사용하면 캐싱 기능을 사용할 수 있지, 반드시 캐싱을 구현해야하는 것은 아닙니다.
+
+
+
+## 3.하위 자료형을 반환할 수 있다.
+
+정적 팩터리 메소드를 사용하면 하위 자료형을 반활 할 수 있습니다.
+
+```java
+public static <E extends Enum<E>> EnumSet<E> noneOf(Class<E> elementType) {
+     Enum<?>[] universe = getUniverse(elementType);
+     if (universe == null)
+         throw new ClassCastException(elementType + " not an enum");
+
+     if (universe.length <= 64)
+         return new RegularEnumSet<>(elementType, universe);
+     else
+         return new JumboEnumSet<>(elementType, universe);
+ }
+```
+
+EnumSet.noneOf() 메소드를 보면, return 타입은 EnumSet의 추상클래스 이며, EnumSet의 **하위 클래스**는 RegularEnumSet 클래스와 JumboEnumSet 클래스 입니다.
+
+Enum의 개수가 **64개 이하면** EnumSet의 하위 클래스인 **RegularEnumSet을** 반환하고, **64개 이상**이면 **JumboEnumSet을** 반환하게 됩니다. 
+
+
+
+## 단점 1. 하위 클래스를 만들 수 없다.
+
+**상속을 하려면 public이나 protected 생성자가 필요합니다.** 그러나 정적 팩터리 메서드만 제공하면 하위 클래스를 만들 수 없습니다.
+
+위에서 살펴본 Collections의 하위 클래스는 만들지 못하며,  상속보다는 컴포지션을 사용해야 합니다.
+
+![](https://github.com/DaeAkin/DaeAkin.github.io/blob/master/img/item1/image1.png?raw=true)
+
+
+
+## 단점 2. 정적 팩터리 메서드는 다른 정적 메서드와 확연히 구분되지 않는다.
+
+Java Doc을 보면 생성자는 API 설명에 명확히 들어나지만 정적 팩터리 메서드는 명확히 들어나지 않습니다. 그러므로 정적 팩터리 메서드의 이름을 지을 때, 널리 알려진 규약을 따르는게 좋습니다.
+
+- **from** : 매개변수를 하나 받아서 해당 타입의 인스턴스를 반환하는 형변환 메서드
+
+  ```java
+  Date d = Date.from(instant);
+  ```
+
+- **of** : 여러 매개변수를 받아 적합한 타입의 인스턴스를 반환하는 집계 메서드
+
+  ```java
+  Set<Rank> faceCards = EnumSet.of(JACK,QUEEN,KING);
+  ```
+
+- **valueOf** : from과 of의 더 자세한 버전
+
+  ```java
+  BigInteger prime = BigInteger.valueOf(Integer.MAX_VALUE);
+  ```
+
+- **instance 또는 getInstance** : (매개변수를 받는다면) 매개변수로 명시한 인스턴스를 반환하지만, 같은 인스턴스임을 보장하지 않는다.
+
+  ```java
+  StackWalker luke = StackWalker.getInstance(options):
+  ```
+
+- **create 또는 newInstance** : instance 혹은 getInstance와 같지만, 매번 새로운 인스턴스를 생성해 반환함을 보장한다.
+
+  ```java
+  Object newArray = Array.newInstance(classObject, arrayLen);
+  ```
+
+- **getType** : getInstance와 같으나, 생성할 클래스가 아닌 다른 클래스에 팩터리 메서드를 정의할 때 쓴다. "Type"은 팩터리 메서드가 반환할 객체의 타입이다. 
+
+  ```java
+  FileStore fs = Files.getFileStore(path)
+  ```
+
+- **newType** : newInstance와 같으나, 생성할 클래스가 아닌 다른 클래스에 팩터리 메서드를 정의할 때 쓴다. "Type"은 팩터리가 팩터리 메서드가 반환할 객체의 타입이다.
+
+  ```java
+  BufferedReader br = Files.newBufferedReader(path);
+  ```
+
+- **type** :  getType과 newType의 간결한 버전
+
+  ```java
+  List<Complaint> litany = Collections.list(legacyLitany);
+  ```
+
+  
+
+## 결론
+
+정적 팩터리 메서드와 public 생성자는 각자의 쓰임새가 있으니 상대적인 장단점을 이해하고 사용하는 것이 좋습니다. 그치만 정적 팩터리를 사용하는 게 유리한 경우가 더 많으므로 무작정 public 생성자를 제공하던 습관이 있다면 고치는게 좋습니다.
