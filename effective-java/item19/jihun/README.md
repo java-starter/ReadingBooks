@@ -22,7 +22,7 @@ AbstractCollection클래스의 remove() 메서드를 보면 @implSpec에서 해�
 
 ![2.png](./images/2.png)
 
-JavaDoc을 만들 때 @implSpec 태그를 활성화 하려면 명령형 매개변수로 `-tag "implSpec:a:Imple째entation Requirements:` 지정해 줘야 한다.
+JavaDoc을 만들 때 @implSpec 태그를 활성화 하려면 명령형 매개변수로 `-tag "implSpec:a:Implementation Requirements:` 지정해 줘야 한다.
 
 # 3. 내부 동작 과정 중간에 끼어들 수 있는 hook 메서드
 
