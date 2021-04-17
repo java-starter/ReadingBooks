@@ -25,7 +25,7 @@ public class Stack<E> {
 
 Stack 클래스와 위와 같을때 아래 `numberStack.push(iterator)` 코드는 컴파일 오류가 발생한다.
 
-왜냐하면 Stack의 실제 타입 매개변수가 Number이기 때문이다. Stack의 pushAll 메서드에서 받을 수 있는 인자는 Iterable<Number>만 가능한데 Iterable<Integer>를 넘겨 줬기 때문이다.
+왜냐하면 Stack의 실제 타입 매개변수가 Number이기 때문이다. Stack의 pushAll 메서드에서 받을 수 있는 인자는 `Iterable<Number>`만 가능한데 `Iterable<Integer>`를 넘겨 줬기 때문이다.
 
 ```java
 public class Main {
@@ -105,7 +105,7 @@ public class Stack<E> {
 
 Stack 클래스와 위와 같을때 아래  numberStack.popAll(objects) 코드는 컴파일 오류가 발생한다.
 
-왜냐하면 Stack의 실제 타입 매개변수가 Number이기 때문이다. Stack의 popAll 메서드에서 받을 수 있는 인자는 Collection<Number>만 가능한데 Collection<Object>를 넘겨 줬기 때문이다.
+왜냐하면 Stack의 실제 타입 매개변수가 Number이기 때문이다. Stack의 popAll 메서드에서 받을 수 있는 인자는 `Collection<Number>`만 가능한데 `Collection<Object>`를 넘겨 줬기 때문이다.
 
 ```java
 public class Main {
@@ -227,7 +227,7 @@ public static void swap(List<?> list, int i, int j) {
 }
 ```
 
-private 도우미 메서드인 swapHelper 메서드는 list가 List<E>임을 알고 있다. 즉, 이 list에서 꺼낸 값의 타입은 항상 E이고, E 타입의 값이라면 이 list에 넣어도 안전함을 알고 있다.
+private 도우미 메서드인 swapHelper 메서드는 list가 `List<E>`임을 알고 있다. 즉, 이 list에서 꺼낸 값의 타입은 항상 E이고, E 타입의 값이라면 이 list에 넣어도 안전함을 알고 있다.
 
 ```java
 public static void swap(List<?> list, int i, int j) {
