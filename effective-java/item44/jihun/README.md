@@ -29,13 +29,13 @@ Function 인터페이스에는 기본 타입을 반환하는 변형이 총 9개�
 
 **인수와 리턴 타입이 모두 기본 타입**일 경우 사용하는 인터페이스로 6개가 정의되어 있다.
 
-명명규칙은 **SrcToResult + Function(Src : 인수, Result : 반환)**이다. 예를들어 long을 받아서 double을 리턴하면 `LongToDoubleFunction` 이다.
+명명규칙은 **SrcToResult + Function(Src : 인수, Result : 반환)** 이다. 예를들어 long을 받아서 double을 리턴하면 `LongToDoubleFunction` 이다.
 
 ### 기본 타입 인수만 받는 함수형 인터페이스(3개)
 
 **인수는 매개변수화 되어있으며, 반환 타입은 기본 타입**일 경우 사용하는 인터페이스로 3개가 정의되어 있다.
 
-명명규칙은 **ToResult + Function(Result: 반환값)**이다. 예를들어 인수 T를 받아서 double을 리턴하면 `ToDoubleFunction` 이다.
+명명규칙은 **ToResult + Function(Result: 반환값)** 이다. 예를들어 인수 T를 받아서 double을 리턴하면 `ToDoubleFunction` 이다.
 
 ## 인수를 2개씩 받는 함수형 인터페이스 (9개)
 
