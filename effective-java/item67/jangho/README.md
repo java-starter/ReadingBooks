@@ -24,7 +24,7 @@
 
 대표적인 사례로 java.awt.Component 클래스의 getSize()를 예로 들 수 있다.
 
-![Untitled](%5B%E1%84%8B%E1%85%B5%E1%84%91%E1%85%A6%E1%86%A8%E1%84%90%E1%85%B5%E1%84%87%E1%85%B3%20%E1%84%8C%E1%85%A1%E1%84%87%E1%85%A1%5D%20Item67%20-%20%E1%84%8E%E1%85%AC%E1%84%8C%E1%85%A5%E1%86%A8%E1%84%92%E1%85%AA%E1%84%82%E1%85%B3%E1%86%AB%20%E1%84%89%E1%85%B5%E1%86%AB%E1%84%8C%E1%85%AE%E1%86%BC%E1%84%92%E1%85%B5%20%E1%84%92%E1%85%A1%E1%84%85%E1%85%A1%20a1e0c26e05d6408c9e7f6cacf37df056/Untitled.png)
+![](https://blog.kakaocdn.net/dn/ch3RXT/btrdBqFLoQK/9A1kTx3ek8mAhbMGKBf3c1/img.png)
 
 이 메서드는 Dimension 인스턴스를 반환하도록 설계됐다. Dimension은 가변으로 설계되었으니, getSize()를 호출하는 모든 곳에서 Dimension 인스턴스를 새로 생성(방어적 복사) 해야한다. 
 
